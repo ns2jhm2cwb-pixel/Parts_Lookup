@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Parts Price Lookup — Maui Power Equipment</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: #1a1a1a; padding: 2rem; }
+.wrap { max-width: 980px; margin: 0 auto; background: #fff; border-radius: 12px; padding: 2rem; border: 1px solid #e0e0e0; }
+h2 { font-size: 20px; font-weight: 500; margin-bottom: 4px; }
+.sub { font-size: 13px; color: #666; margin-bottom: 1.5rem; }
+.file-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 1.5rem; padding: 10px 14px; background: #f9f9f9; border-radius: 8px; border: 1px solid #e0e0e0; }
+.file-label { font-size: 13px; color: #666; }
+.file-name { font-size: 13px; font-weight: 500; flex: 1; }
+.file-status { font-size: 12px; padding: 3px 8px; border-radius: 6px; }
+.status-loaded { background: #e6f4ea; color: #2d7a3a; }
+.status-none { background: #f0f0f0; color: #888; }
+.upload-btn { font-size: 13px; padding: 6px 14px; border: 1px solid #ccc; border-radius: 7px; background: #fff; color: #333; cursor: pointer; white-space: nowrap; }
+.upload-btn:hover { background: #f0f0f0; }
+#fileInput { display: none; }
+.search-table { width: 100%; border-collapse: collapse; margin-bottom: 1.5rem; }
+.search-table th { font-size: 12px; font-weight: 500; color: #888; text-align: left; padding: 6px 8px; border-bottom: 1px solid #e8e8e8; }
+.search-table th.r { text-align: right; }
+.search-table td { padding: 4px 4px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+.row-num { font-size: 12px; color: #bbb; text-align: center; width: 22px; }
+.search-wrap { position: relative; }
+.part-input { width: 100%; font-size: 13px; padding: 6px 8px; border: 1px solid #ddd; border-radius: 7px; background: #fff; color: #1a1a1a; }
+.part-input:focus { outline: none; border-color: #999; box-shadow: 0 0 0 2px rgba(0,0,0,0.06); }
+.part-input.matched { border-color: #4caf50; }
+.part-input.no-match { border-color: #e53935; }
+.dropdown { position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid #ccc; border-radius: 8px; z-index: 100; max-height: 230px; overflow-y: auto; box-shadow: 0 4px 14px rgba(0,0,0,0.1); display: none; }
+.dropdown.open { display: block; }
+.dd-item { padding: 8px 10px; cursor: pointer; border-bottom: 1px solid #f0f0f0; }
+.dd-item:last-child { border-bottom: none; }
+.dd-item:hover, .dd-item.active { background: #f5f5f5; }
+.dd-pn { font-size: 13px; font-weight: 500; color: #1a1a1a; }
+.dd-desc { font-size: 12px; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dd-make { font-size: 11px; color: #aaa; }
+.dd-more { padding: 6px 10px; font-size: 12px; color: #aaa; font-style: italic; }
+.qty-input { width: 68px; font-size: 13px; padding: 6px 8px; border: 1px solid #ddd; border-radius: 7px; background: #fff; text-align: center; }
+.qty-input:focus { outline: none; border-color: #999; }
+.cell-desc { font-size: 13px; color: #1a1a1a; }
+.cell-r { font-size: 13px; font-weight: 500; text-align: right; white-space: nowrap; }
+.empty-cell { font-size: 13px; color: #ccc; }
+.not-found { font-size: 13px; color: #e53935; }
+.clear-row { width: 20px; text-align: center; cursor: pointer; font-size: 15px; color: #ccc; user-select: none; }
+.clear-row:hover { color: #e53935; }
+.summary { background: #f9f9f9; border-radius: 8px; border: 1px solid #e0e0e0; padding: 14px 18px; margin-bottom: 1rem; }
+.sum-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; }
+.sum-row + .sum-row { border-top: 1px solid #ebebeb; }
+.sum-label { font-size: 14px; color: #666; }
+.sum-val { font-size: 14px; font-weight: 500; }
+.sum-row.total .sum-label { font-size: 16px; font-weight: 500; color: #1a1a1a; }
+.sum-row.total .sum-val { font-size: 22px; font-weight: 500; }
+.actions { display: flex; gap: 8px; }
+.btn-clear { font-size: 13px; padding: 7px 16px; border: 1px solid #ccc; border-radius: 7px; background: #fff; color: #666; cursor: pointer; }
+.btn-clear:hover { background: #f0f0f0; }
+.loading-msg { font-size: 13px; color: #888; padding: 6px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h2>Parts price lookup</h2>
+  <p class="sub">Search by part number or description. Supports decimal quantities for labor (e.g. 0.5 = 30 min).</p>
+
+  <div class="file-bar">
+    <span class="file-label">Data file:</span>
+    <span class="file-name" id="fileName">No file loaded</span>
+    <span class="file-status status-none" id="fileStatus">Not loaded</span>
+    <button class="upload-btn" onclick="document.getElementById('fileInput').click()">Load Excel file</button>
+    <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
+  </div>
+  <div id="loadingMsg" class="loading-msg" style="display:none;"></div>
+
+  <table class="search-table">
+    <thead>
+      <tr>
+        <th style="width:22px;"></th>
+        <th style="width:195px;">Part number / keyword</th>
+        <th>Description</th>
+        <th style="width:80px;">Make</th>
+        <th class="r" style="width:85px;">Unit price</th>
+        <th class="r" style="width:72px;">Qty</th>
+        <th class="r" style="width:90px;">Subtotal</th>
+        <th style="width:20px;"></th>
+      </tr>
+    </thead>
+    <tbody id="searchRows"></tbody>
+  </table>
+
+  <div class="summary">
+    <div class="sum-row">
+      <span class="sum-label">Subtotal</span>
+      <span class="sum-val" id="sumSubtotal">—</span>
+    </div>
+    <div class="sum-row">
+      <span class="sum-label">Tax (4.712%)</span>
+      <span class="sum-val" id="sumTax">—</span>
+    </div>
+    <div class="sum-row total">
+      <span class="sum-label">Total</span>
+      <span class="sum-val" id="sumTotal">—</span>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="btn-clear" onclick="clearAll()">Clear all</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+const TAX_RATE = 0.04712;
+const NUM_ROWS = 8;
+const MAX_RESULTS = 10;
+const DB_NAME = 'PartsLookup';
+const DB_STORE = 'files';
+const DB_KEY = 'partsFile';
+let partsArray = [];
+let loaded = false;
+
+const tbody = document.getElementById('searchRows');
+
+function normalizePN(pn) {
+  return String(pn || '').replace(/[\s\-\.]/g, '').toUpperCase().trim();
+}
+function fmt(n) { return '$' + n.toFixed(2); }
+
+function openDB() {
+  return new Promise((res, rej) => {
+    const req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = e => e.target.result.createObjectStore(DB_STORE);
+    req.onsuccess = e => res(e.target.result);
+    req.onerror = e => rej(e);
+  });
+}
+
+async function saveFileToDB(name, data) {
+  const db = await openDB();
+  return new Promise((res, rej) => {
+    const tx = db.transaction(DB_STORE, 'readwrite');
+    tx.objectStore(DB_STORE).put({ name, data }, DB_KEY);
+    tx.oncomplete = res;
+    tx.onerror = rej;
+  });
+}
+
+async function loadFileFromDB() {
+  const db = await openDB();
+  return new Promise((res, rej) => {
+    const tx = db.transaction(DB_STORE, 'readonly');
+    const req = tx.objectStore(DB_STORE).get(DB_KEY);
+    req.onsuccess = e => res(e.target.result);
+    req.onerror = rej;
+  });
+}
+
+function parseAndLoad(name, binaryData) {
+  try {
+    const wb = XLSX.read(binaryData, { type: 'binary' });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+    partsArray = [];
+    rows.forEach(row => {
+      const keys = Object.keys(row);
+      const partNumCol = keys.find(k => /part.?num/i.test(k) || k === 'Part Number');
+      const descCol = keys.find(k => /^desc/i.test(k));
+      const listCol = keys.find(k => /^list$/i.test(k));
+      const makeCol = keys.find(k => /^make$/i.test(k));
+      const ogCol = keys.find(k => /og.?format/i.test(k));
+      const supCol = keys.find(k => /supercede/i.test(k));
+      const pn = String(row[partNumCol] || '').trim();
+      const og = String(ogCol ? (row[ogCol] || '') : '').trim();
+      const sup = String(supCol ? (row[supCol] || '') : '').trim();
+      if (!pn) return;
+      const entry = { pn, og, sup, desc: String(row[descCol] || '').trim(), list: row[listCol] || '', make: String(row[makeCol] || '').trim() };
+      partsArray.push(entry);
+      if (sup && sup !== pn) partsArray.push({ ...entry, pn: sup, og: pn });
+    });
+    loaded = true;
+    document.getElementById('fileName').textContent = name;
+    document.getElementById('fileStatus').textContent = partsArray.length.toLocaleString() + ' parts loaded';
+    document.getElementById('fileStatus').className = 'file-status status-loaded';
+    document.getElementById('loadingMsg').style.display = 'none';
+  } catch(err) {
+    document.getElementById('fileStatus').textContent = 'Error reading file';
+    document.getElementById('loadingMsg').textContent = 'Could not read file: ' + err.message;
+  }
+}
+
+async function tryLoadFromDB() {
+  try {
+    const saved = await loadFileFromDB();
+    if (saved && saved.data) {
+      document.getElementById('loadingMsg').style.display = 'block';
+      document.getElementById('loadingMsg').textContent = 'Loading saved file...';
+      parseAndLoad(saved.name, saved.data);
+    }
+  } catch(e) {}
+}
+
+document.getElementById('fileInput').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  document.getElementById('fileStatus').textContent = 'Loading...';
+  document.getElementById('fileStatus').className = 'file-status status-none';
+  document.getElementById('loadingMsg').style.display = 'block';
+  document.getElementById('loadingMsg').textContent = 'Reading file — may take a moment for large files...';
+  const reader = new FileReader();
+  reader.onload = async function(ev) {
+    const binaryData = ev.target.result;
+    parseAndLoad(file.name, binaryData);
+    await saveFileToDB(file.name, binaryData);
+  };
+  reader.readAsBinaryString(file);
+});
+
+function buildRows() {
+  tbody.innerHTML = '';
+  for (let i = 0; i < NUM_ROWS; i++) {
+    const tr = document.createElement('tr');
+    tr.dataset.row = i;
+    tr.innerHTML = `
+      <td class="row-num">${i+1}</td>
+      <td><div class="search-wrap">
+        <input class="part-input" type="text" placeholder="Part # or keyword" data-row="${i}" autocomplete="off" autocorrect="off" spellcheck="false">
+        <div class="dropdown" id="dd-${i}"></div>
+      </div></td>
+      <td><span id="desc-${i}" class="empty-cell">—</span></td>
+      <td><span id="make-${i}" style="font-size:12px;color:#888;">—</span></td>
+      <td style="text-align:right;"><span class="cell-r" id="price-${i}" data-price="">—</span></td>
+      <td><input class="qty-input" type="number" value="1" min="0.01" step="0.01" data-row="${i}" id="qty-${i}"></td>
+      <td style="text-align:right;"><span class="cell-r" id="sub-${i}" data-val="">—</span></td>
+      <td class="clear-row" data-row="${i}" title="Clear row">×</td>
+    `;
+    tbody.appendChild(tr);
+  }
+  tbody.addEventListener('input', onInput);
+  tbody.addEventListener('click', onTableClick);
+  tbody.addEventListener('keydown', onKeydown);
+  document.addEventListener('click', e => { if (!e.target.closest('.search-wrap')) closeAllDropdowns(); });
+}
+
+function onTableClick(e) {
+  if (e.target.classList.contains('clear-row')) { clearRow(parseInt(e.target.dataset.row)); updateSummary(); }
+  if (e.target.closest('.dd-item')) { const item = e.target.closest('.dd-item'); selectPart(parseInt(item.dataset.row), parseInt(item.dataset.idx)); }
+}
+
+function onInput(e) {
+  const row = e.target.dataset.row;
+  if (row === undefined) return;
+  const i = parseInt(row);
+  if (e.target.classList.contains('part-input')) handleSearch(i);
+  else if (e.target.classList.contains('qty-input')) { updateSubtotal(i); updateSummary(); }
+}
+
+function onKeydown(e) {
+  if (!e.target.classList.contains('part-input')) return;
+  const i = parseInt(e.target.dataset.row);
+  const dd = document.getElementById(`dd-${i}`);
+  const items = dd.querySelectorAll('.dd-item');
+  if (!items.length) return;
+  let active = dd.querySelector('.dd-item.active');
+  let idx = active ? parseInt(active.dataset.idx) : -1;
+  if (e.key === 'ArrowDown') { e.preventDefault(); idx = Math.min(idx+1, items.length-1); items.forEach(it=>it.classList.remove('active')); items[idx].classList.add('active'); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); idx = Math.max(idx-1, 0); items.forEach(it=>it.classList.remove('active')); items[idx].classList.add('active'); }
+  else if (e.key === 'Enter') { e.preventDefault(); if (active) selectPart(i, parseInt(active.dataset.idx)); else if (items.length===1) selectPart(i, parseInt(items[0].dataset.idx)); }
+  else if (e.key === 'Escape') closeAllDropdowns();
+}
+
+function handleSearch(i) {
+  const input = tbody.querySelector(`[data-row="${i}"].part-input`);
+  const val = input.value.trim();
+  const dd = document.getElementById(`dd-${i}`);
+  if (!val) { clearRow(i); updateSummary(); return; }
+  if (!loaded) { document.getElementById(`desc-${i}`).textContent = 'Load a file first'; document.getElementById(`desc-${i}`).className = 'empty-cell'; return; }
+  const results = searchParts(val);
+  if (results.length === 0) {
+    input.className = 'part-input no-match'; clearRowData(i);
+    dd.innerHTML = '<div class="dd-more">No results found</div>'; dd.classList.add('open');
+    updateSummary(); return;
+  }
+  if (results.length === 1) { closeAllDropdowns(); applyPart(i, results[0]); return; }
+  input.className = 'part-input'; clearRowData(i);
+  renderDropdown(i, results); updateSummary();
+}
+
+function searchParts(val) {
+  const normVal = normalizePN(val);
+  const lowerVal = val.toLowerCase();
+  const exact = [], startsWith = [], contains = [];
+  for (let p of partsArray) {
+    const normPN = normalizePN(p.pn), normOG = normalizePN(p.og);
+    const descLower = (p.desc || '').toLowerCase();
+    if (normPN === normVal || normOG === normVal) { exact.push(p); continue; }
+    if (normPN.startsWith(normVal) || normOG.startsWith(normVal)) { startsWith.push(p); continue; }
+    if (normPN.includes(normVal) || normOG.includes(normVal) || descLower.includes(lowerVal)) contains.push(p);
+  }
+  return [...exact, ...startsWith, ...contains];
+}
+
+function renderDropdown(i, results) {
+  const dd = document.getElementById(`dd-${i}`);
+  const shown = results.slice(0, MAX_RESULTS);
+  dd.innerHTML = shown.map((p, idx) => `<div class="dd-item" data-row="${i}" data-idx="${idx}"><div class="dd-pn">${p.pn}</div><div class="dd-desc">${p.desc||'—'}</div><div class="dd-make">${p.make||''}</div></div>`).join('')
+    + (results.length > MAX_RESULTS ? `<div class="dd-more">${results.length} results — type more to narrow down</div>` : '');
+  dd._results = shown; dd.classList.add('open');
+}
+
+function selectPart(i, idx) {
+  const dd = document.getElementById(`dd-${i}`);
+  const part = dd._results && dd._results[idx];
+  if (!part) return;
+  tbody.querySelector(`[data-row="${i}"].part-input`).value = part.pn;
+  closeAllDropdowns(); applyPart(i, part);
+}
+
+function applyPart(i, part) {
+  const input = tbody.querySelector(`[data-row="${i}"].part-input`);
+  input.className = 'part-input matched';
+  document.getElementById(`desc-${i}`).textContent = part.desc || '—';
+  document.getElementById(`desc-${i}`).className = 'cell-desc';
+  document.getElementById(`make-${i}`).textContent = part.make || '—';
+  const price = parseFloat(part.list) || 0;
+  const priceEl = document.getElementById(`price-${i}`);
+  priceEl.textContent = fmt(price); priceEl.dataset.price = price;
+  updateSubtotal(i); updateSummary();
+}
+
+function clearRowData(i) {
+  document.getElementById(`desc-${i}`).textContent = '—'; document.getElementById(`desc-${i}`).className = 'empty-cell';
+  document.getElementById(`make-${i}`).textContent = '—';
+  const p = document.getElementById(`price-${i}`); p.textContent = '—'; p.dataset.price = '';
+  const s = document.getElementById(`sub-${i}`); s.textContent = '—'; s.dataset.val = '';
+}
+
+function clearRow(i) {
+  const input = tbody.querySelector(`[data-row="${i}"].part-input`);
+  if (input) { input.value = ''; input.className = 'part-input'; }
+  document.getElementById(`qty-${i}`).value = 1;
+  clearRowData(i); closeAllDropdowns();
+}
+
+function closeAllDropdowns() { document.querySelectorAll('.dropdown').forEach(d => d.classList.remove('open')); }
+
+function updateSubtotal(i) {
+  const price = parseFloat(document.getElementById(`price-${i}`).dataset.price);
+  const qty = parseFloat(document.getElementById(`qty-${i}`).value) || 1;
+  const subEl = document.getElementById(`sub-${i}`);
+  if (price > 0) { const s = price * qty; subEl.textContent = fmt(s); subEl.dataset.val = s; }
+  else { subEl.textContent = '—'; subEl.dataset.val = ''; }
+}
+
+function updateSummary() {
+  let subtotal = 0, hasAny = false;
+  for (let i = 0; i < NUM_ROWS; i++) { const v = parseFloat(document.getElementById(`sub-${i}`).dataset.val); if (v) { subtotal += v; hasAny = true; } }
+  if (!hasAny) { document.getElementById('sumSubtotal').textContent = '—'; document.getElementById('sumTax').textContent = '—'; document.getElementById('sumTotal').textContent = '—'; return; }
+  const tax = subtotal * TAX_RATE;
+  document.getElementById('sumSubtotal').textContent = fmt(subtotal);
+  document.getElementById('sumTax').textContent = fmt(tax);
+  document.getElementById('sumTotal').textContent = fmt(subtotal + tax);
+}
+
+function clearAll() { for (let i = 0; i < NUM_ROWS; i++) clearRow(i); updateSummary(); }
+
+buildRows();
+tryLoadFromDB();
+</script>
+</body>
+</html>
