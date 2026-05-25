@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Install Stihl Parts Collector</title>
+<style>
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+       max-width: 540px; margin: 60px auto; padding: 0 20px;
+       background: #f5f5f5; color: #1a1a1a; }
+h1  { font-size: 22px; margin-bottom: 6px; }
+.sub { color: #666; margin-bottom: 32px; font-size: 14px; }
+ol  { padding-left: 22px; }
+li  { margin-bottom: 16px; font-size: 15px; line-height: 1.5; }
+code { background: #e8e8e8; padding: 2px 6px; border-radius: 4px;
+       font-family: monospace; font-size: 14px; }
+.note { background: #fff3cd; border-left: 3px solid #f0ad4e;
+        padding: 10px 14px; border-radius: 4px; font-size: 13px;
+        margin-top: 24px; color: #856404; }
+</style>
+</head>
+<body>
+<h1>🔧 Install Stihl Parts Collector</h1>
+<p class="sub">One-time setup. Takes about 60 seconds.</p>
+<ol>
+  <li>Open Chrome and go to <code>chrome://extensions</code></li>
+  <li>Turn on <strong>Developer mode</strong> (toggle in the top-right corner)</li>
+  <li>Click <strong>Load unpacked</strong> and select the <code>stihl_extension</code> folder
+      (the folder containing this file)</li>
+  <li>The 🔧 icon will appear in your Chrome toolbar — pin it for easy access</li>
+</ol>
+
+<p style="margin-top:28px; font-size:15px;"><strong>How to use:</strong></p>
+<ol>
+  <li>Log in to the Stihl dealer portal at <code>ssc.stihl.com</code></li>
+  <li>Open any model's IPL page</li>
+  <li>Click the 🔧 icon — the model is detected automatically</li>
+  <li>Hit <strong>Add this model</strong> (optionally edit the name first)</li>
+  <li>Repeat for each model you want</li>
+  <li>Click <strong>Build &amp; Download CSV</strong> — file downloads instantly</li>
+</ol>
+
+<div class="note">
+  <strong>Token note:</strong> The extension grabs your login token automatically
+  from the Stihl portal — you never need to copy it manually. If you see a
+  "token expired" message, just open the Stihl portal tab and click the extension
+  icon again.
+</div>
+</body>
+</html>
